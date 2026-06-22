@@ -162,6 +162,30 @@ outputs/brownian_paths.csv
 
 이 기능은 Week 5~13의 금융공학 내용을 API 프로젝트와 연결하기 위한 제출용 분석 파트입니다.
 
+## 지난 1개월 백테스트
+
+국내 후보군(`069500`, `005930`, `000660`)은 KIS 일봉 API로 지난 가격을 받아 간단한 walk-forward 백테스트를 실행할 수 있습니다.
+
+```bash
+python3 backtest_last_month.py
+```
+
+생성 파일:
+
+```text
+outputs/backtest_last_month.csv
+outputs/backtest_last_month.md
+```
+
+백테스트 방식:
+
+- 각 거래일마다 직전 가격만 사용해 drift/volatility 추정
+- Brownian motion으로 기대수익률과 손실확률 계산
+- 위험 필터를 통과한 후보 중 점수가 가장 높은 종목 선택
+- 당일 종가 매수, 다음 거래일 종가 평가로 수익률 계산
+
+이 백테스트는 일봉 기반 신호 검증입니다. 실제 주문 체결가, 슬리피지, 호가잔량까지 재현하는 체결 백테스트는 분봉/호가 데이터가 추가로 필요합니다.
+
 ## GitHub Codespaces Secret 등록
 
 1. [GitHub Codespaces settings](https://github.com/settings/codespaces)를 엽니다.
