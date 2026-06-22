@@ -1,0 +1,8 @@
+Artificial intelligence and financial engineering study models that learn from data.
+Deep hedging uses neural networks to estimate hedge ratios for derivative securities.
+PyTorch provides tensors, automatic differentiation, modules, optimizers, and data loaders.
+A language model learns to predict the next token from previous tokens.
+Mini GPT is a small transformer model with causal self attention.
+The model cannot see future tokens during training.
+Korean Investment Open API can be used to request prices, balances, and mock orders.
+This project connects class topics: neural networks, PyTorch, financial data, and API automation.

@@ -1,4 +1,11 @@
-# Samsung Electronics Mock Auto Trader + Finance Engineering Report
+# AI & Finance Engineering Final Project
+
+이 저장소는 기말 프로젝트 제출용으로 두 파트를 함께 포함합니다.
+
+- `mini_gpt/`: 수업 노트북 1~6 흐름을 따라 구현한 TinyGPT / GPT 2.0 스타일 미니 언어모델
+- 루트 Python 파일들: 한국투자증권 Open API 기반 국내장/미국장 멀티마켓 모의투자 시스템
+
+## KIS Multimarket Auto Trader
 
 한국투자증권 Open API의 **모의투자 REST API만** 사용해 국내장/미국장 후보 종목을 스캔하고 지정가 주문을 실행하는 작은 Python 프로젝트입니다. WebSocket과 실전투자 주소/TR ID는 사용하지 않습니다.
 
