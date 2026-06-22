@@ -114,6 +114,7 @@ def score_candidate(symbol: str, close: float, prior_closes: list[float]) -> tup
 
 def run_backtest(history: dict[str, list[DailyClose]]) -> list[SignalRow]:
     lookback = int(os.getenv("BACKTEST_LOOKBACK_DAYS", "10"))
+    trading_days = int(os.getenv("BACKTEST_TRADING_DAYS", "22"))
     min_expected = float(os.getenv("MIN_EXPECTED_RETURN", "0.001"))
     max_loss_probability = float(os.getenv("MAX_LOSS_PROBABILITY", "0.48"))
     initial_cash = float(os.getenv("BACKTEST_INITIAL_CASH", "10000000"))
@@ -121,7 +122,7 @@ def run_backtest(history: dict[str, list[DailyClose]]) -> list[SignalRow]:
 
     common_dates = sorted(set.intersection(*[set(row.date for row in rows) for rows in history.values()]))
     rows_by_symbol = {symbol: {row.date: row.close for row in rows} for symbol, rows in history.items()}
-    results: list[SignalRow] = []
+    raw_results: list[SignalRow] = []
 
     for idx in range(lookback, len(common_dates) - 1):
         date = common_dates[idx]
@@ -141,7 +142,7 @@ def run_backtest(history: dict[str, list[DailyClose]]) -> list[SignalRow]:
         next_close = rows_by_symbol[asset.symbol][next_date]
         realized_return = next_close / close - 1.0
         equity *= 1.0 + realized_return
-        results.append(
+        raw_results.append(
             SignalRow(
                 date=date,
                 symbol=asset.symbol,
@@ -155,10 +156,42 @@ def run_backtest(history: dict[str, list[DailyClose]]) -> list[SignalRow]:
                 equity=equity,
             )
         )
-    return results[-22:]
+    recent = raw_results[-trading_days:]
+    equity = initial_cash
+    normalized: list[SignalRow] = []
+    for row in recent:
+        equity *= 1.0 + row.realized_return
+        normalized.append(
+            SignalRow(
+                date=row.date,
+                symbol=row.symbol,
+                name=row.name,
+                close=row.close,
+                next_close=row.next_close,
+                expected_return=row.expected_return,
+                loss_probability=row.loss_probability,
+                score=row.score,
+                realized_return=row.realized_return,
+                equity=equity,
+            )
+        )
+    return normalized
 
 
-def write_outputs(rows: list[SignalRow]) -> None:
+def benchmark_returns(history: dict[str, list[DailyClose]], rows: list[SignalRow]) -> dict[str, float]:
+    if not rows:
+        return {}
+    start_date = rows[0].date
+    end_date = rows[-1].date
+    result = {}
+    for asset in KOREA_WATCHLIST:
+        by_date = {row.date: row.close for row in history[asset.symbol]}
+        if start_date in by_date and end_date in by_date and by_date[start_date] > 0:
+            result[f"{asset.symbol} {asset.name}"] = by_date[end_date] / by_date[start_date] - 1.0
+    return result
+
+
+def write_outputs(rows: list[SignalRow], benchmarks: dict[str, float]) -> None:
     out_dir = Path("outputs")
     out_dir.mkdir(exist_ok=True)
     csv_path = out_dir / "backtest_last_month.csv"
@@ -182,9 +215,21 @@ def write_outputs(rows: list[SignalRow]) -> None:
         f"- Total return: {total_return:.4%}",
         f"- Win rate: {win_rate:.2%}",
         f"- Average next-day return: {avg_daily:.4%}",
+    ]
+    if benchmarks:
+        report.extend(["", "## Buy-and-Hold Benchmarks", ""])
+        for name, value in benchmarks.items():
+            report.append(f"- {name}: {value:.4%}")
+        best_name, best_value = max(benchmarks.items(), key=lambda item: item[1])
+        report.extend(["", f"Best benchmark: {best_name} ({best_value:.4%})"])
+        if total_return > best_value:
+            report.append("The strategy outperformed the strongest buy-and-hold benchmark in this window.")
+        else:
+            report.append("The strategy return was positive, but much of the opportunity came from the market/stock move itself.")
+    report.extend([
         "",
         "This is a daily-close signal backtest, not an intraday fill simulation.",
-    ]
+    ])
     (out_dir / "backtest_last_month.md").write_text("\n".join(report), encoding="utf-8")
     print(f"saved: {csv_path}")
     print("saved: outputs/backtest_last_month.md")
@@ -207,7 +252,7 @@ def main() -> None:
         time.sleep(float(os.getenv("REQUEST_INTERVAL_SECONDS", "1.3")))
 
     backtest_rows = run_backtest(history)
-    write_outputs(backtest_rows)
+    write_outputs(backtest_rows, benchmark_returns(history, backtest_rows))
 
 
 if __name__ == "__main__":
